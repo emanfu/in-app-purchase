@@ -4,9 +4,11 @@
 
 [![Build Status](https://travis-ci.org/voltrue2/in-app-purchase.svg?branch=master)](https://travis-ci.org/voltrue2/in-app-purchase)
 
-A Node.js module for In-App-Purchase validation for iOS, Android, Amazon, and Windows.
+A Node.js module for In-App-Purchase validation for iOS, Android, Amazon, Windows and Roku.
 
 It can also validate multiple app's receipt with a single back-end using `.validateOnce()` that allows you to change `secret` or `public key` dynamically.
+
+**NOTE** Thank you [gastonelhordoy](https://github.com/gastonelhordoy) for adding Roku support!
 
 ### Required node.js Version
 
@@ -15,6 +17,45 @@ It can also validate multiple app's receipt with a single back-end using `.valid
 ### Online Demo and Doc
 
 <a href="http://iap.gracenode.org" target="_blank">Online Demo</a>
+
+### Auto-service detection has been added
+
+You no longer need to pass `iap.APPLE`, `iap.GOOGLE`, `iap.AMAZON`, `iap.ROKU`, or `iap.WINDOWS`.
+
+The module automatically detects the service without you telling it!
+
+For more details: [HERE](#auto-service-detection)
+
+### Support for Unity Receipts
+
+As of version `1.7.0`, the module supports Unity receipts. [Unity Purchase](https://docs.unity3d.com/Manual/UnityIAPPurchaseReceipts.html)
+
+The receipt is a JSON that looks like as below:
+
+```
+{ "Store": "AppleAppStore", "Payload": "Apple Receipt" }
+```
+
+```javascript
+const iap = require('in-app-purchase');
+iap.validate(unityReceipt, () => {
+	...
+});
+```
+
+### Support for Promise
+
+The following methods now support Promise.
+
+Thanks to [superandrew213](https://github.com/superandrew213) for the [PR](https://github.com/voltrue2/in-app-purchase/pull/99).
+
+- `.setup()`
+
+- `.validate()`
+
+- `.validateOnce()`
+
+- `.refreshGoogleToken()`
 
 ### Debug Logging
 
@@ -29,6 +70,56 @@ iap.config({
 });
 ```
 
+### Test Mode
+
+For Apple and Google, the module can run in test mode so that it skipps production validation.
+
+To enable test mode, set the following value to your configurations:
+
+```javascript
+var iap = require('in-app-purchase');
+iap.config({
+	test: true
+});
+```
+
+### Google Play Subscriptions
+
+As of version `1.6.0`, the module now automatically detects subscription receipts and validates them accordingly.
+
+In order to make this work properly, you must provide the following:
+
+```
+iap.config({
+	googleClientID: '<Google Play client ID>',
+	googleClientSecret: '<Google Play client secret>',
+	googleRefToken: '<Google Play refresh token>'
+});
+```
+
+**NOTE**: `googleAccToken` is not required.
+
+This also makes `.isExpired()` compatible with Google Play purchases.
+
+**TODO**: 
+
+As of version `1.6.1` `.validateOnce(...)` supports this by giving:
+
+```javascript
+const params = {
+	clientId: '<Google Play client ID>',
+	clientSecret: '<Google Play client secret>',
+	refreshToken: '<Google Play refresh token>'
+};
+iap.validateOnce(receipt, params, (...) => {
+	// do things..
+});
+``` 
+
+### .getPurchaseData() w/ ignoreExpired for Android works
+
+As of version `1.6.1`, `ignoreExpired` options for Android is supported. 
+
 ### Methods
 
 #### .validate(service [constant], receipt [string or object], callback [function])
@@ -37,6 +128,8 @@ Validates an in-app-purchase receipt.
 
 **NOTE 1:**
 
+constant for Unity: `iap.UNITY`
+
 constant for iOS: `iap.APPLE`
 
 constant for Android: `iap.GOOGLE`
@@ -44,6 +137,12 @@ constant for Android: `iap.GOOGLE`
 constant for Windows: `iap.WINDOWS`
 
 constant for Amazon: `iap.AMAZON`
+
+constant for Roku: `iap.ROKU`
+
+As of version 1.4.0, we now have built-in auto-service detection in `.validate(receipt, callback)` and `.validateOnce(receipt, secretPubKey, callback)`.
+
+For more detail please read [here](#auto-service-detection)
 
 - For Apple validation, receipt is a base64 encoded string.
 
@@ -77,6 +176,43 @@ Validates an in-app-purchase receipt with a dynamically fed secret or public key
 
 This is usefuly when you need to validate multiple apps' receipts with a single back-end.
 
+<a name="auto-service-detection"></a>
+## Detect service automatically
+
+`in-app-purchase` module now supports auto-service detection as of version 1.4.0.
+
+Here is how it works:
+
+Instead of passing `iap.APPLE`, `iap.GOOGLE`, `iap.AMAZON`, or `iap.WINDOWS` to `iap.validate()` and `iap.validateOnce()`, you may write:
+
+### .validate(receipt [mixed], callback [Function])
+
+```javascript
+.validate(receipt, function (...) {
+	// do something
+});
+```
+
+### .validateOnce(receipt [mixed], params [mixed], callback [function])
+
+#### params [mixed]
+
+For Apple subscription, set params as a `string` of shared password.
+
+For Google Play subscription, set params as an `object` of `{ clientId, clientSecret, refreshToken }`.
+
+For Roku purchases, set params as a `string` with the API Key.
+
+```javascript
+.validateOnce(receipt, params, function (...) {
+	// do something
+})
+```
+
+### .getService(receipt [mixed])
+
+Returns a service name from the given receipt.
+
 #### .isValidated(response [object])
 
 Returns a boolean.
@@ -93,7 +229,7 @@ For Google Play purchases (recurring subscription only), each purchase data in t
 
 #### .refreshGoogleToken(callback [function]);
 
-For Android only!
+**For Android only!**
 
 Returns a callback function with `error` and `response` as arguments.
 
@@ -237,11 +373,19 @@ Example:
 ```
 var inAppPurchase = require('in-app-purchase');
 inAppPurchase.config({
+    amazonAPIVersion: 2,
     secret: "abcdefghijklmnoporstuvwxyz", // this comes from Amazon
     applePassword: "1234567890abcdef1234567890abcdef", // this comes from iTunes Connect
     googlePublicKeyPath: "path/to/public/key/directory/" // this is the path to the directory containing iap-sanbox/iap-live files
+    rokuApiKey: "1234567890abcdef1234567890abcdef" // this comes from Roku Developer Dashboard
 });
 ```
+
+#### Amazon API Version
+
+You may add `amazonAPIVersion: 2` to your configuration to enable Amazon API version 2.
+
+The default is version 1.
 
 #### HTTP Request Configuration
 
@@ -270,13 +414,13 @@ You will need to set the public key value, which is the same value as you would 
 
 This would be the public key value for sandbox.
 
-`export=GOOGLE_IAB_PUBLICKEY_SANDBOX=xxxxxxxxxxxxxxxxxxxxxxxx`.
+`export=GOOGLE_IAB_PUBLICKEY_SANDBOX=xxx`.
 
 #### GOOGLE_IAB_PUBLICKEY_LIVE
 
 This would be the public key value for live
 
-`export=GOOGLE_IAB_PUBLICKEY_LIVE=yyyyyyyyyyyyyyyyyyyyyyyyyy`.
+`export=GOOGLE_IAB_PUBLICKEY_LIVE=yyy`.
 
 **NOTE**: This works exactly the same as you were to use file(s) with one expection. You do **NOT** need to call `.config()` for GooglePlay since it will be using environment variables instead.
 
@@ -380,7 +524,7 @@ Example: Windows
 ```javascript
 var iap = require('in-app-purchase');
 iap.setup(function (error) {
-    if (erorr) {
+    if (error) {
         // oops
     }
     iap.validate(iap.WINDOWS, windowsReceipt, function (err, windowsRes) {
@@ -393,6 +537,25 @@ iap.setup(function (error) {
     });
 });
 ```
+
+Example: Roku
+```javascript
+var iap = require('in-app-purchase');
+iap.setup(function (error) {
+    if (error) {
+        // oops
+    }
+    iap.validate(iap.ROKU, rokuReceipt, function (err, rokuRes) {
+        if (err) {
+            // failed to validate the purchase
+        }
+        if (iap.isValidated(rokuRes)) {
+            // yay good!
+        }
+    });
+});
+```
+
 ## Google Play Store API
 
 You can use Google Play Store API to check the state of a subscription (if the subscription is still valid, auto-renewal, etc). To do so, you need to setup iap module with Google Play Store API Information.

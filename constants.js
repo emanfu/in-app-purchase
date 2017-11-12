@@ -2,10 +2,22 @@
 
 // services
 exports.SERVICES = {
+	UNITY: 'unity',
 	APPLE: 'apple',
 	GOOGLE: 'google',
 	WINDOWS: 'windows',
-	AMAZON: 'amazon'
+	AMAZON: 'amazon',
+	ROKU: 'roku'
+};
+
+exports.UNITY = {
+	APPLE: 'AppleAppStore',
+	GOOGLE: 'GooglePlay'
+};
+
+exports.UNITY = {
+	APPLE: 'AppleAppStore',
+	GOOGLE: 'GooglePlay'
 };
 
 // validation
